@@ -46,7 +46,7 @@ Full result sets: `results/query1_funnel_by_source.csv`, `results/query2_weekly_
 
 ## Dashboard
 
-[Open Dashboard](dashboard.html) — standalone visual summary (KPIs, funnel chart, device conversion, weekly cohort trend) built on the query results above. Open it directly in a browser, no server needed.
+[Open Dashboard](https://harshal-1412.github.io/E-commerce-Funnel-Analysis/dashboard.html) — standalone visual summary (KPIs, funnel chart, device conversion, weekly cohort trend) built on the query results above. Open it directly in a browser, no server needed.
 
 ## Tools
 
