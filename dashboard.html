@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>E-Commerce Funnel Analysis — Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --paper:#F3F4F1;
+    --panel:#FFFFFF;
+    --ink:#1C231F;
+    --ink-soft:#5B655E;
+    --rule:#D8DCD4;
+    --brand:#155E52;
+    --brand-soft:#DCEAE6;
+    --signal:#C1622A;
+    --signal-soft:#F5E2D3;
+    --mono: 'IBM Plex Mono', 'SFMono-Regular', Menlo, monospace;
+    --sans: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    padding:28px 32px 60px;
+  }
+  .masthead{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    border-bottom:2px solid var(--ink);
+    padding-bottom:14px;
+    margin-bottom:22px;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  .masthead h1{
+    font-size:22px;
+    letter-spacing:0.01em;
+    margin:0 0 4px;
+    font-weight:700;
+  }
+  .masthead .sub{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    font-family:var(--mono);
+  }
+  .masthead .meta{
+    text-align:right;
+    font-family:var(--mono);
+    font-size:11.5px;
+    color:var(--ink-soft);
+    line-height:1.6;
+  }
+
+  .kpi-row{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:1px;
+    background:var(--rule);
+    border:1px solid var(--rule);
+    margin-bottom:24px;
+  }
+  .kpi{
+    background:var(--panel);
+    padding:16px 14px;
+  }
+  .kpi .label{
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--ink-soft);
+    margin-bottom:8px;
+  }
+  .kpi .value{
+    font-family:var(--mono);
+    font-size:24px;
+    font-weight:600;
+  }
+  .kpi.flag .value{ color:var(--signal); }
+
+  .grid{
+    display:grid;
+    grid-template-columns:1.3fr 1fr;
+    gap:18px;
+    margin-bottom:18px;
+  }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--rule);
+  }
+  .panel-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    padding:14px 18px 0;
+  }
+  .panel-head h2{
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    margin:0 0 2px;
+  }
+  .panel-head .note{
+    font-size:11px;
+    font-family:var(--mono);
+    color:var(--ink-soft);
+  }
+  .panel-body{ padding:12px 18px 18px; }
+
+  .full{ grid-column: 1 / -1; }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-family:var(--mono);
+    font-size:12px;
+  }
+  th,td{
+    text-align:right;
+    padding:7px 8px;
+    border-bottom:1px solid var(--rule);
+  }
+  th:first-child, td:first-child{ text-align:left; }
+  th{
+    text-transform:uppercase;
+    font-size:10px;
+    letter-spacing:0.05em;
+    color:var(--ink-soft);
+    font-weight:500;
+  }
+  tr.best td{ color:var(--brand); font-weight:600; }
+  tr.worst td{ color:var(--signal); font-weight:600; }
+
+  .funnel-wrap{ padding: 6px 4px 4px; }
+  .funnel-stage{
+    display:grid;
+    grid-template-columns:110px 1fr 130px;
+    align-items:center;
+    gap:12px;
+    margin-bottom:10px;
+  }
+  .funnel-stage .name{ font-size:12px; color:var(--ink-soft); }
+  .funnel-stage .bar-track{ background:var(--paper); border:1px solid var(--rule); height:22px; position:relative; }
+  .funnel-stage .bar-fill{ background:var(--brand); height:100%; }
+  .funnel-stage .num{ font-family:var(--mono); font-size:12px; text-align:right; }
+  .funnel-stage .drop{ color:var(--signal); font-size:10.5px; font-family:var(--mono); }
+
+  .finding{
+    font-size:12.5px;
+    line-height:1.55;
+    color:var(--ink);
+    padding:12px 14px;
+    background:var(--brand-soft);
+    border-left:3px solid var(--brand);
+    margin-bottom:10px;
+  }
+  .finding.flag{
+    background:var(--signal-soft);
+    border-left-color:var(--signal);
+  }
+  .finding b{ font-family:var(--mono); }
+
+  footer{
+    margin-top:24px;
+    font-family:var(--mono);
+    font-size:10.5px;
+    color:var(--ink-soft);
+    border-top:1px solid var(--rule);
+    padding-top:10px;
+  }
+
+  @media (max-width:900px){
+    .kpi-row{ grid-template-columns:repeat(2,1fr); }
+    .grid{ grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div>
+    <h1>E-Commerce Funnel Analysis</h1>
+    <div class="sub">PostgreSQL · 5,000 users · 8,890 events · 818 orders</div>
+  </div>
+  <div class="meta">
+    Period 2026-01-01 → 2026-06-15<br>
+    Query set: funnel · cohorts · device
+  </div>
+</div>
+
+<div class="kpi-row">
+  <div class="kpi">
+    <div class="label">Total Users</div>
+    <div class="value">5,000</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Completed Orders</div>
+    <div class="value">818</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Revenue</div>
+    <div class="value">$212,902</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Avg Order Value</div>
+    <div class="value">$260.27</div>
+  </div>
+  <div class="kpi flag">
+    <div class="label">Overall Conversion</div>
+    <div class="value">16.4%</div>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Funnel — All Users</h2>
+      <span class="note">page_view → purchase</span>
+    </div>
+    <div class="panel-body funnel-wrap" id="funnelWrap"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Conversion by Device</h2>
+      <span class="note">purchases / page views</span>
+    </div>
+    <div class="panel-body" style="height:230px;">
+      <canvas id="deviceChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Weekly Cohort Conversion</h2>
+      <span class="note">Jan – Jun 2026</span>
+    </div>
+    <div class="panel-body" style="height:240px;">
+      <canvas id="cohortChart"></canvas>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Channel Breakdown</h2>
+      <span class="note">sorted by overall conversion</span>
+    </div>
+    <div class="panel-body">
+      <table id="sourceTable"></table>
+    </div>
+  </div>
+</div>
+
+<div class="panel full">
+  <div class="panel-head">
+    <h2>Read</h2>
+  </div>
+  <div class="panel-body">
+    <div class="finding flag">
+      <b>Device gap.</b> Desktop converts at 25.6% vs mobile's 10.5% — a 2.4x gap — even though mobile drives 46% more page views (2,773 vs 1,905). This is the single largest lever in the dataset: fixing mobile checkout UX would likely outperform any channel-spend reallocation.
+    </div>
+    <div class="finding">
+      <b>Channel mix.</b> Social (18.5%) and email (17.0%) outconvert paid ads (15.4%) and referral (14.8%) despite lower traffic volume — organic and paid ads bring the most viewers but convert below the channel average.
+    </div>
+    <div class="finding">
+      <b>Trend.</b> Weekly cohort conversion holds steady in a 12–19% band for six months with no clear drift — the gaps above are structural, not the result of a recent regression.
+    </div>
+  </div>
+</div>
+
+<footer>
+  Source: events.csv · orders.csv · products.csv &nbsp;|&nbsp; Queries: queries.sql &nbsp;|&nbsp; Built with PostgreSQL + Chart.js
+</footer>
+
+<script>
+const data = {
+  funnel_by_source: [
+    {source:"social",viewers:761,added_cart:333,view_to_cart_pct:43.8,started_checkout:172,cart_to_checkout_pct:51.7,purchasers:141,overall_conversion_pct:18.5},
+    {source:"email",viewers:698,added_cart:285,view_to_cart_pct:40.8,started_checkout:151,cart_to_checkout_pct:53.0,purchasers:119,overall_conversion_pct:17.0},
+    {source:"organic",viewers:1783,added_cart:733,view_to_cart_pct:41.1,started_checkout:364,cart_to_checkout_pct:49.7,purchasers:290,overall_conversion_pct:16.3},
+    {source:"paid_ads",viewers:1251,added_cart:498,view_to_cart_pct:39.8,started_checkout:244,cart_to_checkout_pct:49.0,purchasers:193,overall_conversion_pct:15.4},
+    {source:"referral",viewers:507,added_cart:196,view_to_cart_pct:38.7,started_checkout:95,cart_to_checkout_pct:48.5,purchasers:75,overall_conversion_pct:14.8}
+  ],
+  device: [
+    {device:"desktop",page_views:1905,add_to_cart:837,purchases:487,conversion_rate:25.6},
+    {device:"mobile",page_views:2773,add_to_cart:1075,purchases:290,conversion_rate:10.5},
+    {device:"tablet",page_views:322,add_to_cart:133,purchases:41,conversion_rate:12.7}
+  ],
+  cohort: [{"cohort_week": "2025-12-29", "cohort_size": 114, "purchasers": 13, "conversion_rate": 11.4}, {"cohort_week": "2026-01-05", "cohort_size": 214, "purchasers": 40, "conversion_rate": 18.7}, {"cohort_week": "2026-01-12", "cohort_size": 199, "purchasers": 34, "conversion_rate": 17.1}, {"cohort_week": "2026-01-19", "cohort_size": 224, "purchasers": 32, "conversion_rate": 14.3}, {"cohort_week": "2026-01-26", "cohort_size": 195, "purchasers": 29, "conversion_rate": 14.9}, {"cohort_week": "2026-02-02", "cohort_size": 222, "purchasers": 41, "conversion_rate": 18.5}, {"cohort_week": "2026-02-09", "cohort_size": 222, "purchasers": 35, "conversion_rate": 15.8}, {"cohort_week": "2026-02-16", "cohort_size": 191, "purchasers": 27, "conversion_rate": 14.1}, {"cohort_week": "2026-02-23", "cohort_size": 195, "purchasers": 38, "conversion_rate": 19.5}, {"cohort_week": "2026-03-02", "cohort_size": 224, "purchasers": 29, "conversion_rate": 12.9}, {"cohort_week": "2026-03-09", "cohort_size": 216, "purchasers": 32, "conversion_rate": 14.8}, {"cohort_week": "2026-03-16", "cohort_size": 217, "purchasers": 36, "conversion_rate": 16.6}, {"cohort_week": "2026-03-23", "cohort_size": 202, "purchasers": 34, "conversion_rate": 16.8}, {"cohort_week": "2026-03-30", "cohort_size": 188, "purchasers": 29, "conversion_rate": 15.4}, {"cohort_week": "2026-04-06", "cohort_size": 231, "purchasers": 43, "conversion_rate": 18.6}, {"cohort_week": "2026-04-13", "cohort_size": 206, "purchasers": 39, "conversion_rate": 18.9}, {"cohort_week": "2026-04-20", "cohort_size": 218, "purchasers": 26, "conversion_rate": 11.9}, {"cohort_week": "2026-04-27", "cohort_size": 204, "purchasers": 33, "conversion_rate": 16.2}, {"cohort_week": "2026-05-04", "cohort_size": 215, "purchasers": 37, "conversion_rate": 17.2}, {"cohort_week": "2026-05-11", "cohort_size": 203, "purchasers": 39, "conversion_rate": 19.2}, {"cohort_week": "2026-05-18", "cohort_size": 221, "purchasers": 39, "conversion_rate": 17.6}, {"cohort_week": "2026-05-25", "cohort_size": 217, "purchasers": 34, "conversion_rate": 15.7}, {"cohort_week": "2026-06-01", "cohort_size": 209, "purchasers": 34, "conversion_rate": 16.3}, {"cohort_week": "2026-06-08", "cohort_size": 214, "purchasers": 41, "conversion_rate": 19.2}, {"cohort_week": "2026-06-15", "cohort_size": 39, "purchasers": 4, "conversion_rate": 10.3}],
+  overall_stage: {page_view:5000, add_to_cart:2045, checkout_start:1026, purchase:818}
+};
+
+// ---- Funnel bars ----
+const stages = [
+  {name:"Page View", key:"page_view"},
+  {name:"Add to Cart", key:"add_to_cart"},
+  {name:"Checkout Start", key:"checkout_start"},
+  {name:"Purchase", key:"purchase"}
+];
+const wrap = document.getElementById('funnelWrap');
+const maxVal = data.overall_stage.page_view;
+stages.forEach((s, i) => {
+  const val = data.overall_stage[s.key];
+  const pct = (val/maxVal*100).toFixed(0);
+  const prevVal = i>0 ? data.overall_stage[stages[i-1].key] : null;
+  const dropPct = prevVal ? (100 - val/prevVal*100).toFixed(0) : null;
+
+  const row = document.createElement('div');
+  row.className = 'funnel-stage';
+  row.innerHTML = `
+    <div class="name">${s.name}</div>
+    <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+    <div class="num">${val.toLocaleString()} <span class="drop">${dropPct ? '−'+dropPct+'%' : ''}</span></div>
+  `;
+  wrap.appendChild(row);
+});
+
+// ---- Source table ----
+const tbl = document.getElementById('sourceTable');
+let rows = `<tr><th>Source</th><th>Viewers</th><th>Cart%</th><th>Checkout%</th><th>Conv%</th></tr>`;
+data.funnel_by_source.forEach((r,i)=>{
+  const cls = i===0 ? 'best' : (i===data.funnel_by_source.length-1 ? 'worst' : '');
+  rows += `<tr class="${cls}"><td>${r.source}</td><td>${r.viewers}</td><td>${r.view_to_cart_pct}</td><td>${r.cart_to_checkout_pct}</td><td>${r.overall_conversion_pct}</td></tr>`;
+});
+tbl.innerHTML = rows;
+
+const inkSoft = '#5B655E';
+const rule = '#D8DCD4';
+Chart.defaults.font.family = "'IBM Plex Mono', monospace";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#1C231F';
+
+// ---- Device chart ----
+new Chart(document.getElementById('deviceChart'), {
+  type: 'bar',
+  data: {
+    labels: data.device.map(d=>d.device),
+    datasets: [{
+      label: 'Conversion %',
+      data: data.device.map(d=>d.conversion_rate),
+      backgroundColor: data.device.map(d=> d.device==='mobile' ? '#C1622A' : '#155E52'),
+      borderRadius: 2,
+      maxBarThickness: 60
+    }]
+  },
+  options: {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false} },
+    scales:{
+      y:{ beginAtZero:true, grid:{color:rule}, ticks:{callback:v=>v+'%'} },
+      x:{ grid:{display:false} }
+    }
+  }
+});
+
+// ---- Cohort chart ----
+new Chart(document.getElementById('cohortChart'), {
+  type: 'line',
+  data: {
+    labels: data.cohort.map(c=>c.cohort_week.slice(5)),
+    datasets: [{
+      label: 'Weekly conversion %',
+      data: data.cohort.map(c=>c.conversion_rate),
+      borderColor: '#155E52',
+      backgroundColor: 'rgba(21,94,82,0.08)',
+      fill: true,
+      tension: 0.25,
+      pointRadius: 2,
+      borderWidth: 2
+    }]
+  },
+  options: {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false} },
+    scales:{
+      y:{ beginAtZero:true, grid:{color:rule}, ticks:{callback:v=>v+'%'} },
+      x:{ grid:{display:false}, ticks:{ maxTicksLimit:8, maxRotation:0 } }
+    }
+  }
+});
+</script>
+</body>
+</html>
